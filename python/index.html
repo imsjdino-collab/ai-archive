@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>파이썬 버그 수사대</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gugi&family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* 레이아웃: 왼쪽 사건 파일 목록 + 오른쪽 수사 책상(코드 편집기·실행 결과·에러 해설). 두 번째 탭은 문법 개념 사전 */
+:root{
+  --bg:#eef0f3;
+  --surface:#ffffff;
+  --ink:#16202e;
+  --muted:#5b6778;
+  --line:#d3d8e0;
+  --accent:#e2532d;      /* 수사 테이프 주황 */
+  --code-bg:#17202c;
+  --code-ink:#e6edf3;
+  --code-dim:#6b7a8d;
+  --good:#16834a;
+  --bad:#c42b2b;
+  --warn:#b7791f;
+  --display:"Gugi","Noto Sans KR",sans-serif;
+  --body:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+:root:not([data-theme="light"]){}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){--bg:#0f141b;--surface:#18202b;--ink:#e7ecf2;--muted:#9aa7b8;--line:#2a3544;--code-bg:#0b1016;--accent:#f0693f;color-scheme:dark}
+}
+:root[data-theme="dark"]{--bg:#0f141b;--surface:#18202b;--ink:#e7ecf2;--muted:#9aa7b8;--line:#2a3544;--code-bg:#0b1016;--accent:#f0693f;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.6;font-size:16px}
+.tape{height:14px;background:repeating-linear-gradient(-45deg,var(--accent) 0 18px,#1b1b1b 18px 36px)}
+.wrap{max-width:1180px;margin:0 auto;padding:22px 20px 60px}
+header{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:16px}
+h1{font-family:var(--display);font-weight:400;font-size:40px;margin:0;line-height:1.15;text-wrap:balance}
+.sub{color:var(--muted);margin:4px 0 0}
+.status{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pill{font-size:13px;font-weight:700;padding:4px 12px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface)}
+.pill.ok{color:var(--good);border-color:var(--good)}
+.pill.wait{color:var(--warn);border-color:var(--warn)}
+.pill.off{color:var(--muted)}
+nav{display:flex;gap:6px;margin-bottom:16px}
+nav a{text-decoration:none;color:var(--ink);font-weight:700;padding:8px 16px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface)}
+nav a[aria-current="page"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+a:focus-visible,button:focus-visible,textarea:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.panel{display:none}.panel.on{display:block}
+
+.layout{display:grid;grid-template-columns:270px 1fr;gap:16px;align-items:start}
+.cases{background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:4px}
+.cases h2{font-size:14px;color:var(--muted);margin:4px 8px 6px;font-weight:700}
+.case-btn{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;text-align:left;padding:9px 10px;border-radius:10px;border:1.5px solid transparent;background:none;color:var(--ink);font:inherit;cursor:pointer}
+.case-btn:hover{background:var(--bg)}
+.case-btn[aria-current="true"]{border-color:var(--accent);background:var(--bg)}
+.case-btn .no{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.case-btn .t{font-size:14px;font-weight:500;line-height:1.35}
+.case-btn .st{font-size:12px;font-weight:700}
+.case-btn .st.done{color:var(--good)}
+.progress{margin:8px 8px 2px;font-size:13px;color:var(--muted)}
+.bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin:4px 8px 6px}
+.bar span{display:block;height:100%;background:var(--good);transition:width .3s}
+
+.desk{display:flex;flex-direction:column;gap:14px;min-width:0}
+.card{background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:18px 20px}
+.case-head{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start}
+.case-head h2{font-family:var(--display);font-weight:400;font-size:26px;margin:0;line-height:1.2}
+.tag{font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--bg);border:1px solid var(--line)}
+.tag.lv1{color:var(--good)}.tag.lv2{color:var(--warn)}.tag.lv3{color:var(--bad)}
+.mission{margin:8px 0 0}
+.expect{font-family:var(--mono);font-size:14px;background:var(--bg);border-radius:8px;padding:8px 12px;margin-top:10px;white-space:pre-wrap}
+.expect b{font-family:var(--body);font-size:12px;color:var(--muted);display:block}
+
+.editor{display:grid;grid-template-columns:auto 1fr;background:var(--code-bg);border-radius:12px;overflow:hidden;border:1.5px solid #000}
+.gutter{font-family:var(--mono);font-size:15px;line-height:24px;padding:14px 8px 14px 12px;color:var(--code-dim);text-align:right;user-select:none;overflow:hidden}
+.gutter div.err{color:#fff;background:var(--bad);border-radius:4px;padding:0 4px}
+textarea.code{font-family:var(--mono);font-size:15px;line-height:24px;padding:14px 14px;border:0;resize:vertical;min-height:216px;background:transparent;color:var(--code-ink);tab-size:4;white-space:pre;overflow:auto;width:100%}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{font:inherit;font-weight:700;padding:9px 16px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.dark{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.btn:disabled{opacity:.5;cursor:wait}
+.console{font-family:var(--mono);font-size:14px;background:var(--code-bg);color:var(--code-ink);border-radius:12px;padding:12px 14px;white-space:pre-wrap;min-height:64px;overflow-x:auto}
+.console .e{color:#ff8e8e}
+.console .dim{color:var(--code-dim)}
+.verdict{border-radius:12px;padding:14px 16px;border:2px solid}
+.verdict.ok{border-color:var(--good);background:color-mix(in srgb,var(--good) 9%,var(--surface))}
+.verdict.no{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 7%,var(--surface))}
+.verdict.logic{border-color:var(--warn);background:color-mix(in srgb,var(--warn) 9%,var(--surface))}
+.verdict h3{margin:0 0 4px;font-size:18px}
+.verdict p{margin:4px 0}
+.verdict .kor{font-weight:700}
+.linkish{background:none;border:0;color:var(--accent);font:inherit;font-weight:700;text-decoration:underline;cursor:pointer;padding:0}
+.hintbox{border-left:4px solid var(--warn);padding:8px 12px;background:var(--bg);border-radius:0 8px 8px 0}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.label{font-size:13px;color:var(--muted);font-weight:700;margin:0 0 6px}
+
+/* 사전 */
+.dict-top{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.dict-top input{flex:1 1 260px;font:inherit;padding:10px 14px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink)}
+.concepts{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.concept{background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:16px 18px;scroll-margin-top:16px}
+.concept.flash{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 30%,transparent)}
+.concept h3{margin:0 0 4px;font-size:18px}
+.concept .kw{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.concept pre{font-family:var(--mono);font-size:13.5px;background:var(--code-bg);color:var(--code-ink);border-radius:10px;padding:10px 12px;overflow-x:auto;margin:8px 0}
+.concept .errs{font-size:13px;color:var(--bad);font-weight:700}
+.anatomy{display:grid;gap:6px;font-family:var(--mono);font-size:14px}
+.anatomy .ln{background:var(--code-bg);color:var(--code-ink);padding:8px 12px;border-radius:8px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.anatomy .ln span:last-child{font-family:var(--body);color:#ffcf6b;font-size:13px}
+footer{color:var(--muted);font-size:13px;margin-top:22px}
+@media (max-width:860px){.layout{grid-template-columns:1fr}.two{grid-template-columns:1fr}.cases{flex-direction:row;overflow-x:auto}.cases h2,.progress,.bar{display:none}.case-btn{min-width:170px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="tape" aria-hidden="true"></div>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>파이썬 버그 수사대</h1>
+      <p class="sub">고장 난 코드를 실행해 보고, 에러 메시지를 단서 삼아 직접 고쳐요. 막히면 문법 개념 사전으로!</p>
+    </div>
+    <div class="status"><span class="pill wait" id="pyStatus">파이썬 불러오는 중…</span><span class="pill" id="solvedPill">해결 0/10</span></div>
+  </header>
+  <nav aria-label="메뉴">
+    <a href="#cases" data-tab="cases">🔍 사건 파일</a>
+    <a href="#concepts" data-tab="concepts">📘 문법 개념 사전</a>
+  </nav>
+
+  <section class="panel" id="panel-cases">
+    <div class="layout">
+      <aside class="cases" id="caseList" aria-label="사건 목록">
+        <h2>사건 파일 10건</h2>
+        <div class="progress" id="progText">0건 해결</div>
+        <div class="bar"><span id="progBar" style="width:0%"></span></div>
+      </aside>
+      <div class="desk">
+        <div class="card">
+          <div class="case-head"><h2 id="cTitle"></h2><span class="tag" id="cLevel"></span></div>
+          <p class="mission" id="cMission"></p>
+          <div class="expect" id="cExpect"></div>
+        </div>
+        <div class="card">
+          <p class="label">수사 코드 (직접 고쳐 보세요)</p>
+          <div class="editor"><div class="gutter" id="gutter" aria-hidden="true"></div><textarea class="code" id="code" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="파이썬 코드"></textarea></div>
+          <div class="toolbar" style="margin-top:12px">
+            <button class="btn primary" id="runBtn">▶ 실행하고 확인하기</button>
+            <button class="btn" id="hintBtn">💡 힌트</button>
+            <button class="btn" id="resetBtn">↺ 처음 코드로</button>
+            <button class="btn" id="nextBtn">다음 사건 →</button>
+          </div>
+        </div>
+        <div class="two">
+          <div class="card"><p class="label">실행 결과</p><div class="console" id="console"><span class="dim">아직 실행하지 않았어요. 먼저 고장 난 코드를 그대로 실행해서 증상을 확인해 보세요.</span></div></div>
+          <div class="card" id="verdictCard"><p class="label">수사 노트</p><div id="verdict"><p class="dim" style="color:var(--muted)">실행하면 에러가 무슨 뜻인지, 어느 줄을 봐야 하는지 알려 줄게요.</p></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-concepts">
+    <div class="card" style="margin-bottom:14px">
+      <h2 style="font-family:var(--display);font-weight:400;margin:0 0 8px">에러 메시지 읽는 법</h2>
+      <div class="anatomy">
+        <div class="ln"><span>File "&lt;exec&gt;", line 2</span><span>① 몇 번째 줄에서 문제가 났는지</span></div>
+        <div class="ln"><span>    print(scroe)</span><span>② 문제가 난 바로 그 코드</span></div>
+        <div class="ln"><span>NameError: name 'scroe' is not defined</span><span>③ 에러 종류 : 자세한 이유 (맨 마지막 줄이 핵심!)</span></div>
+      </div>
+    </div>
+    <div class="dict-top"><label for="search" style="position:absolute;left:-9999px">개념 검색</label><input id="search" placeholder="개념이나 에러 이름으로 찾기 (예: 들여쓰기, TypeError, range)"><span class="pill" id="dictCount"></span></div>
+    <div class="concepts" id="concepts"></div>
+  </section>
+  <footer>정보 수업 · 파이썬 기초 문법 복습용 · 실제 파이썬(Pyodide)이 브라우저 안에서 실행돼요.</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<script>
+/* ---------- 문법 개념 ---------- */
+const CONCEPTS=[
+ {id:"colon",title:"콜론(:)과 블록",kw:"if for while def 콜론",errs:"SyntaxError: expected ':'",
+  body:"if, for, while, def 줄 끝에는 반드시 콜론(:)을 붙여요. 콜론은 \"여기부터 안쪽 내용이 시작돼요\"라는 신호예요.",code:'if score >= 90:\n    print("A")'},
+ {id:"indent",title:"들여쓰기",kw:"들여쓰기 indent 공백 4칸 블록",errs:"IndentationError",
+  body:"콜론 다음 줄은 공백 4칸(또는 Tab)만큼 안쪽으로 들여 써야 해요. 같은 블록의 줄들은 들여쓰기 칸 수가 똑같아야 해요.",code:'for i in range(3):\n    print(i)   # 4칸 들여쓰기'},
+ {id:"var",title:"변수 이름",kw:"변수 이름 오타 대소문자",errs:"NameError",
+  body:"변수는 만들 때 쓴 이름과 정확히 같게 불러야 해요. 한 글자만 달라도, 대문자·소문자만 달라도 다른 변수예요.",code:'score = 90\nprint(score)   # Score, scroe는 다른 이름'},
+ {id:"string",title:"문자열과 따옴표",kw:"문자열 따옴표 str 큰따옴표 작은따옴표",errs:"SyntaxError: unterminated string literal",
+  body:"글자는 따옴표로 감싸요. 시작한 따옴표와 끝나는 따옴표의 종류가 같아야 해요. \"...\" 또는 '...'",code:'print("안녕")\nprint(\'반가워\')'},
+ {id:"type",title:"자료형 바꾸기 str()·int()",kw:"자료형 형변환 str int 문자 숫자 더하기",errs:"TypeError: can only concatenate str",
+  body:"문자열(str)과 숫자(int)는 + 로 바로 붙일 수 없어요. 숫자를 글자로 붙이려면 str(숫자), 글자를 숫자로 계산하려면 int(글자)로 바꿔요.",code:'age = 14\nprint("나이: " + str(age))\nprint("나이:", age)   # 쉼표로도 OK'},
+ {id:"input",title:"input()은 항상 문자열",kw:"input 입력 int 변환 논리 오류",errs:"(에러 없이 답이 이상함)",
+  body:"input()으로 받은 값은 숫자처럼 보여도 문자열이에요. \"3\" + \"5\"는 \"35\"가 돼요. 계산하려면 int(input())으로 받아요.",code:'a = int(input())\nb = int(input())\nprint(a + b)'},
+ {id:"compare",title:"= 와 == 의 차이",kw:"비교 연산자 같다 대입 == =",errs:"SyntaxError: invalid syntax. Maybe you meant '=='",
+  body:"= 는 \"넣는다(대입)\", == 는 \"같은가?(비교)\"예요. if 조건에는 비교 연산자 == , != , > , < , >= , <= 를 써요.",code:'x = 10        # 대입\nif x == 10:   # 비교\n    print("같아요")'},
+ {id:"range",title:"range()의 끝 숫자",kw:"range 반복 for 범위 끝 포함",errs:"(에러 없이 답이 이상함)",
+  body:"range(시작, 끝)은 끝 숫자 바로 앞까지만 만들어요. range(1, 5)는 1, 2, 3, 4예요. 5까지 포함하려면 range(1, 6).",code:'for i in range(1, 6):\n    print(i)   # 1 2 3 4 5'},
+ {id:"index",title:"리스트 인덱스는 0부터",kw:"리스트 list 인덱스 index 순서 0",errs:"IndexError: list index out of range",
+  body:"리스트의 첫 번째 칸은 [0]번이에요. 3개짜리 리스트는 [0], [1], [2]까지만 있어요. 마지막 칸은 [-1]로도 꺼낼 수 있어요.",code:'fruits = ["사과", "바나나", "포도"]\nprint(fruits[0])    # 사과\nprint(fruits[-1])   # 포도'},
+ {id:"return",title:"함수와 return",kw:"함수 def return 반환 None",errs:"(None이 출력됨)",
+  body:"함수가 결과를 돌려주려면 return을 써야 해요. return이 없으면 함수는 None(아무것도 없음)을 돌려줘요.",code:'def double(n):\n    return n * 2\n\nprint(double(4))   # 8'},
+ {id:"paren",title:"괄호 짝 맞추기",kw:"괄호 print 소괄호 짝",errs:"SyntaxError: '(' was never closed",
+  body:"여는 괄호 ( 와 닫는 괄호 ) 의 개수는 항상 같아야 해요. print( ... ) 처럼 함수 이름 뒤에는 괄호가 꼭 필요해요.",code:'print(len("hello"))   # 괄호 2쌍'}
+];
+/* ---------- 사건 파일 ---------- */
+const CASES=[
+ {t:"사라진 콜론",lv:1,concept:"colon",mission:"나이가 14 이상이면 메시지를 출력하려고 했는데 실행이 안 돼요.",
+  code:'age = 15\nif age >= 14\n    print("중학생 이상이에요")',expect:"중학생 이상이에요",
+  hint:"2번째 줄 if 문 끝을 잘 보세요. 무엇이 빠졌을까요?",
+  symptom:'File "<exec>", line 2\n    if age >= 14\n                ^\nSyntaxError: expected \':\'',
+  accept:['age = 15\nif age >= 14:\n    print("중학생 이상이에요")']},
+ {t:"줄 맞춤 실종 사건",lv:1,concept:"indent",mission:"\"안녕\"을 번호와 함께 3번 출력하고 싶어요.",
+  code:'for i in range(3):\nprint("안녕", i)',expect:"안녕 0\n안녕 1\n안녕 2",
+  hint:"for 문 안에서 반복할 줄은 안쪽으로 들여 써야 해요.",
+  symptom:'File "<exec>", line 2\n    print("안녕", i)\n    ^\nIndentationError: expected an indented block after \'for\' statement on line 1',
+  accept:['for i in range(3):\n    print("안녕", i)','for i in range(3):\n\tprint("안녕", i)']},
+ {t:"이름이 바뀐 변수",lv:1,concept:"var",mission:"점수를 출력하려고 했는데 그런 이름은 없대요.",
+  code:'score = 90\nprint(scroe)',expect:"90",
+  hint:"변수를 만들 때 쓴 이름과 부를 때 쓴 이름을 한 글자씩 비교해 보세요.",
+  symptom:'File "<exec>", line 2, in <module>\nNameError: name \'scroe\' is not defined. Did you mean: \'score\'?',
+  accept:['score = 90\nprint(score)']},
+ {t:"짝 잃은 따옴표",lv:1,concept:"string",mission:"짧은 문장을 출력하고 싶어요.",
+  code:'print("파이썬 재밌다\')',expect:"파이썬 재밌다",
+  hint:"문장을 여는 따옴표와 닫는 따옴표의 모양이 같나요?",
+  symptom:'File "<exec>", line 1\n    print("파이썬 재밌다\')\n          ^\nSyntaxError: unterminated string literal (detected at line 1)',
+  accept:['print("파이썬 재밌다")',"print('파이썬 재밌다')"]},
+ {t:"글자와 숫자의 충돌",lv:2,concept:"type",mission:"이름과 나이를 한 문장으로 붙여 출력하고 싶어요.",
+  code:'name = "디디"\nage = 14\nprint(name + "는 " + age + "살")',expect:"디디는 14살",
+  hint:"age는 숫자예요. 글자와 + 로 붙이려면 무엇으로 바꿔야 할까요?",
+  symptom:'File "<exec>", line 3, in <module>\nTypeError: can only concatenate str (not "int") to str',
+  accept:['name = "디디"\nage = 14\nprint(name + "는 " + str(age) + "살")','name = "디디"\nage = "14"\nprint(name + "는 " + age + "살")']},
+ {t:"3 더하기 5는 35?",lv:2,concept:"input",mission:"숫자 두 개를 입력받아 더해요. (자동 입력: 3, 5)",inputs:["3","5"],
+  code:'a = input()\nb = input()\nprint(a + b)',expect:"8",
+  hint:"에러는 없는데 답이 이상해요. input()으로 받은 값은 어떤 자료형일까요?",
+  symptom:"35\n(에러는 없지만 기대한 답 8이 아니에요)",
+  accept:['a = int(input())\nb = int(input())\nprint(a + b)','a = input()\nb = input()\nprint(int(a) + int(b))']},
+ {t:"넣기와 비교하기",lv:2,concept:"compare",mission:"x가 10이면 \"같아요\"를 출력해요.",
+  code:'x = 10\nif x = 10:\n    print("같아요")',expect:"같아요",
+  hint:"if 조건에서는 '넣기'가 아니라 '같은지 비교'를 해야 해요.",
+  symptom:'File "<exec>", line 2\n    if x = 10:\n       ^^^^^^\nSyntaxError: invalid syntax. Maybe you meant \'==\' or \':=\' instead of \'=\'?',
+  accept:['x = 10\nif x == 10:\n    print("같아요")']},
+ {t:"하나 모자란 합계",lv:3,concept:"range",mission:"1부터 5까지 모두 더한 값(15)을 출력해요.",
+  code:'total = 0\nfor i in range(1, 5):\n    total = total + i\nprint(total)',expect:"15",
+  hint:"range(1, 5)가 정확히 어떤 숫자들을 만드는지 print(i)로 확인해 보세요.",
+  symptom:"10\n(에러는 없지만 기대한 답 15가 아니에요)",
+  accept:['total = 0\nfor i in range(1, 6):\n    total = total + i\nprint(total)','total = 0\nfor i in range(1, 6):\n    total += i\nprint(total)']},
+ {t:"없는 칸을 찾는 리스트",lv:3,concept:"index",mission:"과일 리스트에서 마지막 과일(포도)을 출력해요.",
+  code:'fruits = ["사과", "바나나", "포도"]\nprint(fruits[3])',expect:"포도",
+  hint:"리스트 칸 번호는 0부터 시작해요. 3개짜리 리스트의 마지막 칸 번호는?",
+  symptom:'File "<exec>", line 2, in <module>\nIndexError: list index out of range',
+  accept:['fruits = ["사과", "바나나", "포도"]\nprint(fruits[2])','fruits = ["사과", "바나나", "포도"]\nprint(fruits[-1])']},
+ {t:"대답 없는 함수",lv:3,concept:"return",mission:"숫자를 두 배로 만드는 함수로 8을 출력해요.",
+  code:'def double(n):\n    n * 2\n\nprint(double(4))',expect:"8",
+  hint:"함수가 계산은 했는데 결과를 밖으로 돌려주지 않았어요.",
+  symptom:"None\n(에러는 없지만 기대한 답 8이 아니에요)",
+  accept:['def double(n):\n    return n * 2\n\nprint(double(4))','def double(n):\n    return n * 2\nprint(double(4))']}
+];
+/* ---------- 에러 해설 ---------- */
+const ERR_KO={
+ SyntaxError:"문법 에러 · 파이썬이 문장을 읽지 못했어요. 콜론, 따옴표, 괄호, = / == 를 확인해요.",
+ IndentationError:"들여쓰기 에러 · 줄의 시작 위치(공백 칸 수)가 맞지 않아요.",
+ TabError:"들여쓰기 에러 · Tab과 공백이 섞여 있어요. 한 가지로 통일해요.",
+ NameError:"이름 에러 · 그런 이름의 변수나 함수가 없어요. 오타나 대소문자를 확인해요.",
+ TypeError:"자료형 에러 · 서로 다른 종류(글자·숫자 등)를 함께 쓸 수 없는 방식으로 썼어요.",
+ IndexError:"인덱스 에러 · 리스트에 없는 칸 번호를 불렀어요. 번호는 0부터예요.",
+ ValueError:"값 에러 · 종류는 맞지만 값이 이상해요. (예: int(\"abc\"))",
+ ZeroDivisionError:"0으로 나누기 에러 · 어떤 수도 0으로 나눌 수 없어요.",
+ EOFError:"입력 에러 · input()이 받을 값이 더 없어요.",
+ KeyError:"키 에러 · 딕셔너리에 그 키가 없어요.",
+ AttributeError:"속성 에러 · 그 값에는 그런 기능(메서드)이 없어요."
+};
+const ERR_CONCEPT={SyntaxError:null,IndentationError:"indent",TabError:"indent",NameError:"var",TypeError:"type",IndexError:"index",ValueError:"type",EOFError:"input"};
+
+/* ---------- 상태 ---------- */
+let cur=0, py=null, pyFailed=false;
+const drafts={};
+let solved=new Set();
+try{solved=new Set(JSON.parse(localStorage.getItem("pybug-solved")||"[]"));}catch(e){}
+function saveSolved(){try{localStorage.setItem("pybug-solved",JSON.stringify([...solved]));}catch(e){}}
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+
+/* ---------- 탭 ---------- */
+const TABS=["cases","concepts"];
+function showTab(){
+  const h=location.hash.replace("#",""); const t=TABS.includes(h)?h:"cases";
+  TABS.forEach(x=>{$("panel-"+x).classList.toggle("on",x===t);const a=document.querySelector(`nav a[data-tab="${x}"]`);x===t?a.setAttribute("aria-current","page"):a.removeAttribute("aria-current");});
+}
+window.addEventListener("hashchange",showTab);
+document.querySelectorAll("nav a").forEach(a=>a.addEventListener("click",e=>{e.preventDefault();location.hash=a.dataset.tab;showTab();}));
+function openConcept(id){
+  location.hash="concepts"; showTab(); $("search").value=""; renderConcepts();
+  const el=$("c-"+id); if(!el) return;
+  el.scrollIntoView({behavior:"smooth",block:"start"});
+  el.classList.add("flash"); setTimeout(()=>el.classList.remove("flash"),1800);
+}
+
+/* ---------- 사건 목록 ---------- */
+function renderList(){
+  const list=$("caseList");
+  list.querySelectorAll(".case-btn").forEach(b=>b.remove());
+  CASES.forEach((c,i)=>{
+    const b=document.createElement("button"); b.className="case-btn"; b.type="button";
+    b.setAttribute("aria-current",String(i===cur));
+    b.innerHTML=`<span class="no">#${String(i+1).padStart(2,"0")}</span><span class="t">${esc(c.t)}</span><span class="st ${solved.has(i)?"done":""}">${solved.has(i)?"✔ 해결":""}</span>`;
+    b.onclick=()=>{drafts[cur]=$("code").value; loadCase(i);};
+    list.appendChild(b);
+  });
+  $("solvedPill").textContent=`해결 ${solved.size}/${CASES.length}`;
+  $("progText").textContent=`${solved.size}건 해결`;
+  $("progBar").style.width=(solved.size/CASES.length*100)+"%";
+}
+function loadCase(i){
+  cur=i; const c=CASES[i];
+  $("cTitle").textContent=`사건 #${String(i+1).padStart(2,"0")} · ${c.t}`;
+  const lv=["","쉬움","보통","도전"][c.lv]; $("cLevel").textContent=lv; $("cLevel").className="tag lv"+c.lv;
+  $("cMission").textContent=c.mission;
+  $("cExpect").innerHTML=`<b>이렇게 출력되면 해결!</b>${esc(c.expect)}`;
+  $("code").value=drafts[i]??c.code;
+  $("console").innerHTML='<span class="dim">먼저 고장 난 코드를 그대로 실행해서 증상을 확인해 보세요.</span>';
+  $("verdict").innerHTML='<p style="color:var(--muted);margin:0">실행하면 에러가 무슨 뜻인지, 어느 줄을 봐야 하는지 알려 줄게요.</p>';
+  renderGutter(null); renderList();
+}
+function renderGutter(errLine){
+  const n=Math.max($("code").value.split("\n").length,9);
+  $("gutter").innerHTML=Array.from({length:n},(_,k)=>`<div class="${k+1===errLine?"err":""}">${k+1}</div>`).join("");
+}
+$("code").addEventListener("input",()=>renderGutter(null));
+$("code").addEventListener("scroll",()=>{$("gutter").scrollTop=$("code").scrollTop;});
+$("code").addEventListener("keydown",e=>{
+  if(e.key==="Tab"){e.preventDefault();const t=e.target,s=t.selectionStart;t.setRangeText("    ",s,t.selectionEnd,"end");renderGutter(null);}
+  if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){e.preventDefault();run();}
+});
+
+/* ---------- 실행 ---------- */
+function normCode(s){
+  return s.replace(/\r/g,"").split("\n").map(l=>l.replace(/\s+$/,"").replace(/\t/g,"    ")).filter(l=>l.trim()!=="")
+    .map(l=>{const m=l.match(/^(\s*)(.*)$/);return m[1]+m[2].replace(/\s+/g," ");}).join("\n");
+}
+function normOut(s){return s.replace(/\r/g,"").split("\n").map(l=>l.replace(/\s+$/,"")).join("\n").replace(/^\n+|\n+$/g,"");}
+async function runPy(code,inputs){
+  const out=[];
+  py.setStdout({batched:s=>out.push(s)});
+  py.setStderr({batched:s=>out.push(s)});
+  py.runPython(`import builtins\n_q=${JSON.stringify(inputs||[])}\ndef _inp(p=""):\n    if p: print(p, end="")\n    if not _q: raise EOFError("입력할 값이 더 없어요")\n    return _q.pop(0)\nbuiltins.input=_inp`);
+  const g=py.globals.get("dict")();
+  try{
+    py.runPython(code,{globals:g});
+    return {out:out.join("\n"),error:null};
+  }catch(e){
+    const msg=String(e.message||e);
+    const lines=msg.split("\n").filter(l=>l.trim());
+    const last=lines[lines.length-1]||msg;
+    const m=[...msg.matchAll(/File "<exec>", line (\d+)/g)];
+    const tb=lines.filter(l=>!/^Traceback|pyodide|_pyodide|File "\/lib/.test(l)).join("\n");
+    return {out:out.join("\n"),error:{type:(last.match(/^(\w+)/)||[])[1]||"Error",last,line:m.length?+m[m.length-1][1]:null,tb}};
+  }finally{g.destroy&&g.destroy();}
+}
+function errorPart(type,last,line){
+  const ko=ERR_KO[type]||"에러가 났어요. 메시지 맨 마지막 줄을 읽어 보세요.";
+  const cid=ERR_CONCEPT[type]!==undefined&&ERR_CONCEPT[type]!==null?ERR_CONCEPT[type]:CASES[cur].concept;
+  const cname=(CONCEPTS.find(c=>c.id===cid)||{}).title;
+  return `<p class="kor">${esc(ko)}</p>
+    ${line?`<p>📍 <b>${line}번째 줄</b>을 살펴보세요.</p>`:""}
+    <p style="font-family:var(--mono);font-size:13px">${esc(last)}</p>
+    ${cname?`<p>관련 개념: <button class="linkish" data-concept="${cid}">${esc(cname)}</button></p>`:""}`;
+}
+function bindConceptLinks(){document.querySelectorAll("[data-concept]").forEach(b=>b.onclick=()=>openConcept(b.dataset.concept));}
+async function run(){
+  const c=CASES[cur], code=$("code").value;
+  drafts[cur]=code;
+  const con=$("console"), v=$("verdict");
+  if(py){
+    $("runBtn").disabled=true;
+    const r=await runPy(code,c.inputs);
+    $("runBtn").disabled=false;
+    con.innerHTML=(r.out?esc(r.out):"")+(r.error?`${r.out?"\n":""}<span class="e">${esc(r.error.tb)}</span>`:"")||'<span class="dim">(출력 없음)</span>';
+    renderGutter(r.error?r.error.line:null);
+    if(r.error){
+      v.innerHTML=`<div class="verdict no"><h3>🚨 ${esc(r.error.type)} 발견</h3>${errorPart(r.error.type,r.error.last,r.error.line)}</div>`;
+    }else if(normOut(r.out)===normOut(c.expect)){
+      markSolved(v);
+    }else{
+      const cname=CONCEPTS.find(x=>x.id===c.concept).title;
+      v.innerHTML=`<div class="verdict logic"><h3>🤔 에러는 없는데 결과가 달라요</h3>
+        <p class="kor">논리 오류 · 파이썬은 문제없이 실행했지만, 우리가 원한 답이 아니에요.</p>
+        <p>기대: <b style="font-family:var(--mono)">${esc(c.expect)}</b> · 실제: <b style="font-family:var(--mono)">${esc(normOut(r.out)||"(없음)")}</b></p>
+        <p>관련 개념: <button class="linkish" data-concept="${c.concept}">${esc(cname)}</button></p></div>`;
+    }
+  }else{
+    /* 파이썬을 불러오지 못했을 때: 정답 코드와 비교 */
+    const isOrig=normCode(code)===normCode(c.code);
+    const ok=c.accept.some(a=>normCode(a)===normCode(code));
+    if(isOrig){
+      con.innerHTML=`<span class="e">${esc(c.symptom)}</span>`;
+      const tm=c.symptom.match(/^(\w+Error)/m); const lm=c.symptom.match(/line (\d+)/);
+      renderGutter(lm?+lm[1]:null);
+      v.innerHTML=tm?`<div class="verdict no"><h3>🚨 ${tm[1]} 발견</h3>${errorPart(tm[1],c.symptom.split("\n").pop(),lm?+lm[1]:null)}</div>`
+        :`<div class="verdict logic"><h3>🤔 에러는 없는데 결과가 달라요</h3><p class="kor">논리 오류 · 기대한 답은 ${esc(c.expect)}예요.</p><p>관련 개념: <button class="linkish" data-concept="${c.concept}">${esc(CONCEPTS.find(x=>x.id===c.concept).title)}</button></p></div>`;
+    }else if(ok){con.textContent=c.expect; renderGutter(null); markSolved(v);}
+    else{
+      con.innerHTML='<span class="dim">(오프라인 모드에서는 정답 코드와 비교만 할 수 있어요)</span>';
+      v.innerHTML=`<div class="verdict no"><h3>아직 해결되지 않았어요</h3><p>${esc(c.hint)}</p><p>관련 개념: <button class="linkish" data-concept="${c.concept}">${esc(CONCEPTS.find(x=>x.id===c.concept).title)}</button></p></div>`;
+    }
+  }
+  bindConceptLinks();
+}
+function markSolved(v){
+  const c=CASES[cur]; const first=!solved.has(cur);
+  solved.add(cur); saveSolved(); renderList();
+  const cn=CONCEPTS.find(x=>x.id===c.concept);
+  v.innerHTML=`<div class="verdict ok"><h3>✅ 사건 해결!${first?"":" (다시 해결)"}</h3>
+    <p>오늘의 개념: <b>${esc(cn.title)}</b></p><p>${esc(cn.body)}</p>
+    ${solved.size===CASES.length?"<p class=\"kor\">🏅 10건 모두 해결! 명탐정 인증</p>":""}</div>`;
+}
+$("runBtn").onclick=run;
+$("resetBtn").onclick=()=>{$("code").value=CASES[cur].code; drafts[cur]=CASES[cur].code; renderGutter(null);};
+$("hintBtn").onclick=()=>{const c=CASES[cur];$("verdict").innerHTML=`<div class="hintbox">💡 ${esc(c.hint)}</div><p>관련 개념: <button class="linkish" data-concept="${c.concept}">${esc(CONCEPTS.find(x=>x.id===c.concept).title)}</button></p>`;bindConceptLinks();};
+$("nextBtn").onclick=()=>{drafts[cur]=$("code").value; loadCase((cur+1)%CASES.length);};
+
+/* ---------- 개념 사전 ---------- */
+function renderConcepts(){
+  const q=$("search").value.trim().toLowerCase();
+  const list=CONCEPTS.filter(c=>!q||(c.title+c.kw+c.errs+c.body).toLowerCase().includes(q));
+  $("concepts").innerHTML=list.map(c=>{
+    const used=CASES.map((x,i)=>x.concept===c.id?i:-1).filter(i=>i>=0);
+    return `<article class="concept" id="c-${c.id}"><h3>${esc(c.title)}</h3><div class="kw">${esc(c.kw)}</div>
+      <p>${esc(c.body)}</p><pre>${esc(c.code)}</pre><div class="errs">자주 보는 메시지: ${esc(c.errs)}</div>
+      ${used.length?`<p style="margin:8px 0 0">${used.map(i=>`<button class="linkish" data-case="${i}">사건 #${String(i+1).padStart(2,"0")} 풀러 가기</button>`).join(" · ")}</p>`:""}</article>`;
+  }).join("")||'<p style="color:var(--muted)">찾는 개념이 없어요. 다른 단어로 검색해 보세요.</p>';
+  $("dictCount").textContent=`${list.length}개 개념`;
+  document.querySelectorAll("[data-case]").forEach(b=>b.onclick=()=>{location.hash="cases";showTab();loadCase(+b.dataset.case);});
+}
+$("search").addEventListener("input",renderConcepts);
+
+/* ---------- 파이썬 불러오기 ---------- */
+async function boot(){
+  const st=$("pyStatus");
+  try{
+    if(typeof loadPyodide!=="function") throw new Error("no pyodide");
+    py=await loadPyodide({indexURL:"https://cdn.jsdelivr.net/pyodide/v0.26.4/full/"});
+    st.textContent="🐍 파이썬 준비 완료"; st.className="pill ok";
+  }catch(e){
+    py=null; pyFailed=true;
+    st.textContent="오프라인 모드 (정답 비교)"; st.className="pill off";
+  }
+}
+renderConcepts(); loadCase(0); showTab(); boot();
+</script>
+</body>
+</html>
