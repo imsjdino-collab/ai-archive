@@ -307,7 +307,12 @@ const CASES = [
     why:"주어진 게임을 하는 사람에서 만드는 사람이 되도록, 만들고 싶은 게임을 스스로 정하고 기획부터 해 보게 했어요.",
     roles:{s:"게임 구상, 기획 초안 작성, 직접 제작, 결과물 제출",a:"VR·AI 도구로 제작 지원",t:"기획 수업, 초안 피드백, 결과물 수합·전시"},
     flow:[["s","만들고 싶은 게임 구상"],["s","기획 초안 작성"],["t","기획 수업"],["s","VR·AI 도구로 제작"],["s","결과물 제출"],["t","모아서 전시"]],
-    tools:[{name:"VR 기기",by:"제작 도구"},{name:"AI 도구",by:"제작 도구"},{name:"프로젝트 수합·전시",by:"Apps Script로 제작",url:"https://script.google.com/macros/s/AKfycbzrIPMPL4FbPaYE4caD4oIXV1vu3r7aNIQmHlEgPnTCLpqrYTKcn7_7yjE2-0ViF1U/exec"},{name:"ASCII 전시관",by:"Claude로 제작",url:"https://claude.ai/artifact/3ymXqbZkAAKQ9VsqUhZGxF",local:"ascii/"}] }
+    tools:[{name:"VR 기기",by:"제작 도구"},{name:"AI 도구",by:"제작 도구"},{name:"프로젝트 수합·전시",by:"Apps Script로 제작",url:"https://script.google.com/macros/s/AKfycbzrIPMPL4FbPaYE4caD4oIXV1vu3r7aNIQmHlEgPnTCLpqrYTKcn7_7yjE2-0ViF1U/exec"}] },
+  { cat:"동아리", status:"run", title:"파이썬의 무궁무진함, 코드가 그림이 되는 ASCII 전시관", target:"동아리 · AI교실 전시", subject:"동아리",
+    why:"파이썬을 계산이나 문제 풀이 도구로만 알던 학생들에게, 코드가 그림이 되고 움직이는 작품이 되는 모습을 보여 주고 싶었어요. 화면 아래에서 파이썬 스타일 코드가 한 줄씩 실행될 때마다 위쪽 작품이 한 단계씩 완성돼요. 그 과정을 보면서 프로그래밍으로 만들 수 있는 것이 얼마나 무궁무진한지 느끼도록 했어요.",
+    roles:{s:"코드와 작품이 함께 바뀌는 과정 관찰, 흐름 바로 단계별 탐구, 내 그림을 넣어 ASCII 아트로 변신시키기",a:"교사와 함께 ASCII 애니메이션 작품 10종 제작",t:"작품 기획과 문구 구성, AI교실 큰 화면 전시 운영"},
+    flow:[["t","전시 작품 기획"],["a","ASCII 애니메이션 제작"],["s","코드 한 줄씩 따라 보기"],["s","흐름 바로 단계 탐구"],["s","내 그림 넣어 변신"],["t","AI교실 전시"]],
+    tools:[{name:"ASCII 전시관",by:"Claude로 제작",url:"https://claude.ai/artifact/3ymXqbZkAAKQ9VsqUhZGxF",local:"ascii/"},{name:"파이썬 스타일 코드",by:"제작 과정 표현"}] }
 ];
 const OTHERS = [
   { zone:"work", cat:"운영·업무", status:"demo", title:"너이거배웠어",
