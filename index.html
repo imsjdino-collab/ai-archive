@@ -280,6 +280,7 @@ html.map #mapView{display:block;position:fixed;inset:0;background:var(--bg)}
   <button class="x" type="button" id="lbX" aria-label="닫기">✕</button>
   <button class="prev" type="button" id="lbPrev" aria-label="이전 사진">‹</button>
   <img id="lbImg" alt="">
+  <video id="lbVid" controls muted loop playsinline preload="metadata" style="display:none;max-width:100%;max-height:calc(100% - 70px);border-radius:8px;background:#222"></video>
   <div class="cap"><span id="lbCap"></span><span class="cnt" id="lbCnt"></span></div>
   <button class="next" type="button" id="lbNext" aria-label="다음 사진">›</button>
 </div>
@@ -303,7 +304,18 @@ const CASES = [
     why:"자율주행차가 '보고, 판단하고, 움직이는' 과정은 영상으로만 보면 막연해요. 작은 로봇에 AI 카메라를 달고 학생이 직접 코드를 짜서 달려 보면서, AI의 인식 결과가 센서 값이 되고 그 값이 모터 동작으로 이어지는 흐름을 손으로 이해하도록 했어요.",
     roles:{s:"메이크코드로 직접 코드 작성, 인식 결과에 따라 움직임 규칙 만들기, 주행 테스트와 코드 수정",a:"허스키렌즈가 카메라 영상 속 대상을 인식해 결과를 값으로 전달",t:"인식 → 판단 → 제어 흐름 설명, 로봇·주행 코스 준비, 막힌 코드 함께 점검"},
     flow:[["t","자율주행 원리 소개"],["s","허스키렌즈로 인식 확인"],["a","카메라 영상 인식"],["s","메이크코드로 인식 값 읽기"],["s","조건별 모터 제어 코드"],["s","코스에서 주행 테스트"],["s","코드 고쳐 다시 달리기"]],
-    tools:[{name:"핑퐁로봇",by:"주행 로봇"},{name:"허스키렌즈",by:"AI 카메라"},{name:"마이크로비트",by:"제어 보드"},{name:"MakeCode",by:"학생 직접 코딩",url:"https://makecode.microbit.org/"}] },
+    tools:[{name:"핑퐁로봇",by:"주행 로봇"},{name:"허스키렌즈",by:"AI 카메라"},{name:"마이크로비트",by:"제어 보드"},{name:"MakeCode",by:"학생 직접 코딩",url:"https://makecode.microbit.org/"}],
+    photos:[
+      {src:"photos/car-1.jpg",cap:"직접 코딩한 로봇을 출발선에 놓고 주행 테스트"},
+      {src:"photos/car-2.jpg",cap:"노트북의 메이크코드와 로봇을 오가며 코드 고치기"},
+      {src:"photos/car-3.jpg",cap:"모둠별 코스에서 동시에 달려 보는 AI교실"},
+      {src:"photos/car-4.jpg",cap:"교실 곳곳에 깔린 주행 코스"},
+      {src:"photos/car-5.jpg",cap:"주행이 끝나면 다시 자리로, 코드 수정 후 재도전"},
+      {video:"video/car-drive-s.mp4",poster:"video/car-drive-s.jpg",cap:"🎬 S자 코스를 따라 달리는 로봇"},
+      {video:"video/car-drive-h.mp4",poster:"video/car-drive-h.jpg",cap:"🎬 ㄷ자 코스 주행"},
+      {video:"video/car-drive-t.mp4",poster:"video/car-drive-t.jpg",cap:"🎬 T자 코스에서 방향 바꾸기"},
+      {video:"video/car-robot-test.mp4",poster:"video/car-robot-test.jpg",cap:"🎬 책상 위에서 바퀴 동작 먼저 확인"}
+    ] },
   { cat:"정규수업", status:"run", title:"생활 속 문제를 AI 영상으로", target:"1학년 주제선택", subject:"주제선택 활동",
     why:"AI 영상 도구는 연령·계정 제한이 있어 중학생이 직접 쓰기 어렵고, 도구 조작에 시간을 쓰면 정작 무엇을 말할지 고민할 시간이 줄어요. 그래서 학생은 기획과 표현에만 집중하도록 역할을 나눴어요.",
     roles:{s:"생활 속 문제 찾기, 기획, 대본·장면별 대사, 배경·환경·주인공 묘사",a:"학생이 쓴 장면 묘사를 영상으로 생성",t:"AI로 장면 생성, 캡컷으로 이어 붙이기, 피드백 진행"},
@@ -400,7 +412,7 @@ function caseHtml(c,n){
       <p class="why">${esc(c.why)}</p>
       <div class="roles">${["s","a","t"].map(k=>`<div class="role" style="--c:${ROLE[k].c}"><h4>${ROLE[k].label}</h4><p>${esc(c.roles[k])}</p></div>`).join("")}</div>
       <ol class="flow">${c.flow.map(([k,t])=>`<li class="${k}" title="${ROLE[k].label}">${esc(t)}</li>`).join("")}</ol>
-      ${c.photos?`<div><button type="button" class="photo-btn" data-photos="${n-1}">📷 활동 사진 ${c.photos.length}장 보기</button></div>`:""}
+      ${c.photos?`<div><button type="button" class="photo-btn" data-photos="${n-1}">📷 활동 사진 ${c.photos.filter(p=>!p.video).length}장${c.photos.some(p=>p.video)?` · 🎬 영상 ${c.photos.filter(p=>p.video).length}개`:""} 보기</button></div>`:""}
       <div class="tools"><span class="lbl">사용한 도구</span>${c.tools.map(t=>`<span class="tool"><span class="name">${esc(t.name)}</span><span class="by">${esc(t.by)}</span>${t.url?`<a href="${esc(linkOf(t))}" target="_blank" rel="noopener">열기 ↗</a>${qrBtn(t.name,linkOf(t))}`:""}</span>`).join("")}</div>
     </div>
   </article>`;
@@ -477,9 +489,9 @@ route();
 
 /* ===== 사진 크게 보기 ===== */
 let lbSet=[],lbI=0;
-function lbShow(){const p=lbSet[lbI];$("lbImg").src=p.src;$("lbImg").alt=p.cap;$("lbCap").textContent=p.cap;$("lbCnt").textContent=`${lbI+1} / ${lbSet.length}`;}
+function lbShow(){const p=lbSet[lbI],v=$("lbVid"),im=$("lbImg");v.pause();if(p.video){im.style.display="none";v.style.display="";v.poster=p.poster||"";v.src=p.video;v.play().catch(()=>{});}else{v.style.display="none";v.removeAttribute("src");im.style.display="";im.src=p.src;im.alt=p.cap;}$("lbCap").textContent=p.cap;$("lbCnt").textContent=`${lbI+1} / ${lbSet.length}`;}
 function lbOpen(set){lbSet=set;lbI=0;lbShow();$("lb").classList.add("on");$("lbX").focus();}
-function lbClose(){$("lb").classList.remove("on");}
+function lbClose(){$("lb").classList.remove("on");$("lbVid").pause();}
 function lbMove(d){lbI=(lbI+d+lbSet.length)%lbSet.length;lbShow();}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-photos]");if(b) lbOpen(CASES[+b.dataset.photos].photos);});
 $("lbX").onclick=lbClose;$("lbPrev").onclick=()=>lbMove(-1);$("lbNext").onclick=()=>lbMove(1);
