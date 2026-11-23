@@ -384,7 +384,7 @@ function cardHtml(o){
     <span class="pill ${cls}" style="${o.zone==="play"?"background:var(--ai)":""}">${label}</span>
     <h3>${esc(o.title)}</h3><p>${esc(o.desc)}</p>
     <div class="meta"><span>대상 <b>${esc(o.target)}</b></span><span>도구 <b>${esc(o.tools)}</b></span></div>
-    <div class="actions">${o.liveOnly?`<span class="soon">📺 ${esc(o.liveOnly)}</span>`:o.url?`<a class="btn" href="${esc(o.url)}" target="_blank" rel="noopener">열어 보기 ↗</a><button class="btn line" type="button" data-qr="${LINKS.push([o.title,o.url])-1}">▦ QR</button>`:`<span class="soon">링크 준비 중</span>`}</div>
+    <div class="actions">${o.liveOnly?`<span class="soon">📺 ${esc(o.liveOnly)}</span>`:o.url?`<a class="btn" href="${esc(o.url)}" target="_blank" rel="noopener">열어 보기 ↗</a><button class="btn line" type="button" data-qr="${LINKS.push([o.title,o.url])-1}">▦ QR</button>`:`<span class="soon">🔒 학생 개인정보를 다뤄 공개 링크는 공유하지 않아요</span>`}</div>
   </article>`;
 }
 function render(){
